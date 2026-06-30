@@ -1,0 +1,325 @@
+ <!DOCTYPE html>
+ <html lang="zh-CN">
+ <head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>📈 股票分析助手</title>
+   <link rel="stylesheet" href="/style.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#165dff">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="股票分析">
+ </head>
+ <body>
+   <nav class="nav">
+     <div class="nav-inner">
+       <h1 class="nav-title">📈 股票分析助手</h1>
+       <span class="nav-date"><%= date %></span>
+     </div>
+   </nav>
+  <!-- ═══ Network Access Banner ═══ -->
+  <div class="network-banner">
+    <div class="network-banner-inner">
+      <div class="network-info">
+        <span class="network-label">手机访问</span>
+        <span class="network-url">http://<%= lanIp %>:<%= port %></span>
+        <span class="network-hint">确保手机与电脑在同一网络</span>
+      </div>
+      <div class="network-qr">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=http://<%= lanIp %>:<%= port %>"
+             alt="QR Code" width="60" height="60"
+             onerror="this.style.display='none'">
+      </div>
+    </div>
+  </div>
+
+ 
+   <main class="container">
+     <!-- ═══ Check-in Banner ═══ -->
+     <section class="card checkin-card">
+       <div class="checkin-info">
+         <h2>今日打卡</h2>
+         <p class="date-label"><%= date %></p>
+       </div>
+       <% if (checkin) { %>
+         <div class="checkin-status done">
+           <span class="checkin-badge">✅ 已打卡</span>
+           <% if (checkin.notes) { %>
+             <p class="checkin-notes"><%= checkin.notes %></p>
+           <% } %>
+         </div>
+       <% } else { %>
+         <div class="checkin-status pending">
+           <p class="reminder-text">🌙 今晚还未分析打卡，别忘了完成今日分析！</p>
+           <button class="btn btn-primary" onclick="doCheckin()">📋 立即打卡</button>
+         </div>
+       <% } %>
+     </section>
+ 
+     <!-- ═══ 
+
+<!-- Calendar Card -->
+<section class="card calendar-card">
+<div class="calendar-header">
+<button class="btn-icon" onclick="calendarPrevMonth()" title="上个月">◀</button>
+<h3 id="calendarTitle"></h3>
+<button class="btn-icon" onclick="calendarNextMonth()" title="下个月">▶</button>
+</div>
+<div class="calendar-weekdays">
+<span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+</div>
+<div id="calendarGrid" class="calendar-grid"></div>
+<div class="calendar-legend">
+<span class="legend-item"><span class="legend-dot today"></span> 今日</span>
+<span class="legend-item"><span class="legend-dot checked"></span> 已打卡</span>
+</div>
+</section>
+
+Dashboard Grid ═══ -->
+     <div class="dashboard-grid">
+ 
+       <!-- ─── Stock Management & Analysis ─── -->
+       <div class="card">
+         <div class="card-header">
+           <h2>📊 自选股 / 板块</h2>
+           <button class="btn btn-sm" onclick="showAddStock()">+ 添加</button>
+         </div>
+         <div class="stock-list">
+           <% if (stocks.length === 0) { %>
+             <div class="empty-state">
+               <p>尚未添加任何股票或板块</p>
+               <p class="hint">点击「添加」开始追踪</p>
+             </div>
+           <% } else { %>
+             <% stocks.forEach(function(s) { %>
+               <div class="stock-item" data-stock-id="<%= s.id %>">
+                 <div class="stock-info">
+                   <div class="stock-code"><%= s.code %></div>
+                   <div class="stock-name"><%= s.name %></div>
+                   <span class="stock-type <%= s.type %>"><%= s.type === 'stock' ? '股票' : '板块' %></span>
+                 </div>
+                 <div class="stock-action">
+                   <% if (s.analysis_date === date) { %>
+                     <span class="status-done">✅ 已分析</span>
+                   <% } else { %>
+                     <button class="btn btn-sm btn-primary" onclick="openAnalysis(<%= s.id %>, '<%= s.name %>')">分析</button>
+                   <% } %>
+                   <button class="btn-icon" onclick="deleteStock(<%= s.id %>, '<%= s.name %>')" title="删除">✕</button>
+                 </div>
+               </div>
+             <% }); %>
+           <% } %>
+         </div>
+       </div>
+ 
+       <!-- ─── Today's Analysis Summary ─── -->
+       <div class="card">
+         <div class="card-header">
+           <h2>📝 今日分析</h2>
+         </div>
+         <div id="todayAnalysis">
+           <div class="empty-state"><p>加载中...</p></div>
+         </div>
+       </div>
+ 
+       <!-- ─── Accuracy Stats ─── -->
+       <div class="card accuracy-card">
+         <div class="card-header">
+           <h2>🎯 近两周预测准确率</h2>
+         </div>
+         <% if (accuracyStats) { %>
+           <div class="accuracy-grid">
+             <div class="accuracy-stat">
+               <div class="stat-value <%= (accuracyStats.total > 0 && accuracyStats.correct / accuracyStats.total >= 0.7) ? 'green' : (accuracyStats.total > 0 && accuracyStats.correct / accuracyStats.total >= 0.5) ? 'yellow' : '' %>">
+                 <%= accuracyStats.total > 0 ? Math.round(accuracyStats.correct / accuracyStats.total * 100) : 0 %>%
+               </div>
+               <div class="stat-label">准确率</div>
+             </div>
+             <div class="accuracy-stat">
+               <div class="stat-value green"><%= accuracyStats.correct || 0 %></div>
+               <div class="stat-label">✅ 正确</div>
+             </div>
+             <div class="accuracy-stat">
+               <div class="stat-value red"><%= accuracyStats.incorrect || 0 %></div>
+               <div class="stat-label">❌ 错误</div>
+             </div>
+             <div class="accuracy-stat">
+               <div class="stat-value gray"><%= accuracyStats.pending || 0 %></div>
+               <div class="stat-label">⏳ 待验证</div>
+             </div>
+             <div class="accuracy-stat total">
+               <div class="stat-value"><%= accuracyStats.total || 0 %></div>
+               <div class="stat-label">总预测</div>
+             </div>
+           </div>
+         <% } else { %>
+           <div class="empty-state"><p>暂无数据</p></div>
+         <% } %>
+ 
+         <!-- Daily breakdown -->
+         <% if (dailyAccuracy && dailyAccuracy.length > 0) { %>
+           <div class="daily-breakdown">
+             <h3>每日明细</h3>
+             <% dailyAccuracy.forEach(function(d) { %>
+               <div class="daily-row">
+                 <span class="daily-date"><%= d.analysis_date %></span>
+                 <div class="daily-bar-wrapper">
+                   <div class="daily-bar">
+                     <% if (d.correct > 0) { %>
+                       <div class="bar-segment correct" style="flex: <%= d.correct %>"></div>
+                     <% } %>
+                     <% if (d.incorrect > 0) { %>
+                       <div class="bar-segment incorrect" style="flex: <%= d.incorrect %>"></div>
+                     <% } %>
+                     <% if (d.pending > 0) { %>
+                       <div class="bar-segment pending" style="flex: <%= d.pending %>"></div>
+                     <% } %>
+                   </div>
+                   <span class="daily-count"><%= d.correct %>/<%= d.total %></span>
+                 </div>
+               </div>
+             <% }); %>
+           </div>
+         <% } %>
+       </div>
+ 
+       <!-- ─── Recent Predictions ─── -->
+       <div class="card predictions-card">
+         <div class="card-header">
+           <h2>📋 近期预测记录</h2>
+<button class="btn btn-sm btn-primary" onclick="autoVerifyAll()" id="autoVerifyBtn">🔄 一键验证</button>
+         </div>
+         <% if (recentPredictions.length === 0) { %>
+           <div class="empty-state"><p>暂无预测记录</p></div>
+         <% } else { %>
+           <div class="predictions-list">
+             <% recentPredictions.forEach(function(p) { %>
+               <div class="prediction-item <%= p.is_correct === 1 ? 'correct' : p.is_correct === 0 ? 'incorrect' : 'pending' %>">
+                 <div class="prediction-main">
+                   <span class="pred-stock"><%= p.stock_name %> (<%= p.stock_code %>)</span>
+                   <span class="pred-direction <%= p.direction %>">
+                     <%= {up: '📈 看涨', down: '📉 看跌', sideways: '➡️ 震荡'}[p.direction] %>
+                   </span>
+                   <span class="pred-date"><%= p.analysis_date %></span>
+<% if (p.reference_price) { %><span class="pred-price">参考价: ¥<%= p.reference_price.toFixed(2) %></span><% } %>
+                 </div>
+                 <div class="prediction-result">
+<% if (p.verified_at && p.actual_result) { %><span class="auto-badge">🤖 自动</span><% } %>
+                   <% if (p.is_correct === 1) { %>
+                     <span class="result-badge correct">✅ 正确</span>
+                   <% } else if (p.is_correct === 0) { %>
+                     <span class="result-badge incorrect">❌ 错误</span>
+                   <% } else { %>
+                     <button class="btn btn-xs" onclick="verifyPrediction(<%= p.id %>, 'up')">📈 涨</button>
+                     <button class="btn btn-xs" onclick="verifyPrediction(<%= p.id %>, 'down')">📉 跌</button>
+                     <button class="btn btn-xs" onclick="verifyPrediction(<%= p.id %>, 'sideways')">➡️ 横</button>
+                   <% } %>
+                 </div>
+                 <% if (p.reason) { %>
+                   <div class="pred-reason"><%= p.reason %></div>
+                 <% } %>
+               </div>
+             <% }); %>
+           </div>
+         <% } %>
+       </div>
+     </div>
+   </main>
+ 
+   <!-- ═══ Analysis Modal ═══ -->
+   <div id="analysisModal" class="modal" style="display:none">
+     <div class="modal-backdrop" onclick="closeModal()"></div>
+     <div class="modal-content">
+       <div class="modal-header">
+         <h2 id="modalTitle">📝 股票分析</h2>
+         <button class="btn-icon" onclick="closeModal()">✕</button>
+       </div>
+       <form id="analysisForm" onsubmit="submitAnalysis(event)">
+         <input type="hidden" id="stockId" name="stock_id">
+ 
+         <div class="form-section">
+           <h3>🐉 缠论分析</h3>
+           <p class="field-hint">分析走势类型、中枢、背驰、买卖点等</p>
+           <textarea id="chanTheory" name="chan_theory" rows="4" placeholder="输入缠论分析内容..."></textarea>
+         </div>
+ 
+         <div class="form-section">
+           <h3>📊 K线量价关系分析</h3>
+           <p class="field-hint">分析成交量变化、价量配合、量价背离等</p>
+           <textarea id="volumePrice" name="volume_price" rows="4" placeholder="输入量价关系分析内容..."></textarea>
+         </div>
+ 
+         <div class="form-section prediction-section">
+           <h3>🔮 后续走势预测</h3>
+           <p class="field-hint">基于以上分析，预测未来走势方向</p>
+           <div class="direction-options">
+             <label class="direction-option">
+               <input type="radio" name="direction" value="up" required>
+               <span class="direction-label up">📈 看涨</span>
+             </label>
+             <label class="direction-option">
+               <input type="radio" name="direction" value="down">
+               <span class="direction-label down">📉 看跌</span>
+             </label>
+             <label class="direction-option">
+               <input type="radio" name="direction" value="sideways">
+               <span class="direction-label sideways">➡️ 震荡</span>
+             </label>
+           </div>
+           <textarea id="predictionReason" name="reason" rows="2" placeholder="预测理由（可选）"></textarea>
+         </div>
+ 
+         <button type="submit" class="btn btn-primary btn-full">💾 保存分析 & 预测</button>
+       </form>
+     </div>
+   </div>
+ 
+   <!-- ═══ Add Stock Modal ═══ -->
+   <div id="addStockModal" class="modal" style="display:none">
+     <div class="modal-backdrop" onclick="closeAddStock()"></div>
+     <div class="modal-content modal-sm">
+       <div class="modal-header">
+         <h2>➕ 添加追踪</h2>
+         <button class="btn-icon" onclick="closeAddStock()">✕</button>
+       </div>
+       <form id="addStockForm" onsubmit="addStock(event)">
+<div class="form-group search-form-group">
+<label>搜索代码/名称</label>
+<div class="search-wrapper">
+<input type="text" id="stockSearchInput" placeholder="输入代码或名称搜索，或直接填写下方字段" autocomplete="off">
+<div id="searchResults" class="search-dropdown" style="display:none"></div>
+</div>
+</div>
+<div class="form-group">
+<label>代码</label>
+<input type="text" id="selectedCode" name="code" placeholder="股票代码 如 000001.SZ" required>
+</div>
+<div class="form-group">
+<label>名称</label>
+<input type="text" id="selectedName" name="name" placeholder="输入或搜索自动填充" required>
+</div>
+<div class="form-group">
+<label>类型</label>
+<select id="selectedType" name="type">
+<option value="stock">股票</option>
+<option value="sector">板块</option>
+</select>
+</div>
+<button type="submit" class="btn btn-primary btn-full">确认添加</button>
+</form>
+     </div>
+   </div>
+ 
+   <script src="/script.js"></script>
+ 
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(function(err) {
+        console.log("SW registration failed:", err);
+      });
+    }
+  </script>
+</body>
+ </html>
